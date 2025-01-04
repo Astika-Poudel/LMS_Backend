@@ -23,11 +23,8 @@ const schema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    role:{
-        type: String,
-        enum: ["admin", "Student", "Tutor"],
-        default: "Student",
-    },
+    role: { type: String, enum: ["Student", "Admin", "Tutor"], default: "Student", required: true },
+    
     subscription:[
         {
          type: mongoose.Schema.Types.ObjectId,

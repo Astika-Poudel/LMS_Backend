@@ -3,7 +3,8 @@ import { User } from "../models/User.js";
 
 export const isAuth = async (req, res, next) => {
     try {
-        const token = req.headers.token;  
+        // Check for 'Authorization' header with 'Bearer <token>'
+        const token = req.headers.authorization?.split(" ")[1]; // Get token from 'Authorization' header
         if (!token) 
             return res.status(403).json({
                 message: "Please Login",
