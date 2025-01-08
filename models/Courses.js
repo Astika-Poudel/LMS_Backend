@@ -1,31 +1,34 @@
 import mongoose from "mongoose";
 
 const schema = new mongoose.Schema({
-    title:{
+    title: {
         type: String,
         required: true,
     },
-    description:{
+    description: {
         type: String,
         required: true,
     },
-    image:{
+    image: {
         type: String,
         required: true,
     },
-    price:{
+    price: {
         type: Number,
         required: true,
     },
-    duration:{
+    duration: {
         type: Number,
         required: true,
     },
-    category:{
+    category: {
         type: String,
         required: true,
     },
-
+    Tutor: {
+        type: String,
+        required: true,
+    }
 });
 
-export const Courses = mongoose.model("Courses",schema);
+export const Courses = mongoose.model("Courses", schema);
