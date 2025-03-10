@@ -20,36 +20,45 @@ export const getSingleCourse = TryCatch(async (req, res) => {
 });
 
 export const fetchLectures = TryCatch(async (req, res) => {
-  const lectures = await Lecture.find({ course: req.params.id });
+  const { id } = req.params;
 
-  const user = await User.findById(req.user._id);
+  console.log("Fetching lectures for course ID:", id); // Add this line
 
-  if (user.role === "admin") {
-    return res.json({ lectures });
+  if (!id) {
+    return res.status(400).json({ message: "Course ID is required" });
   }
 
-  if (!user.subscription.includes(req.params.id))
-    return res.status(400).json({
-      message: "You have not subscribed to this course",
-    });
+  const lectures = await Lecture.find({ course: id });
 
-  res.json({ lectures });
+  console.log("Lectures found:", lectures); // Add this line
+
+  if (!lectures || lectures.length === 0) {
+    return res.status(404).json({ message: "No lectures found for this course" });
+  }
+
+  res.status(200).json({
+    success: true,
+    lectures,
+  });
 });
 
+
+// Fetch a single lecture by ID
 export const fetchLecture = TryCatch(async (req, res) => {
-  const lecture = await Lecture.findById(req.params.id);
+  const { id } = req.params;
 
-  const user = await User.findById(req.user._id);
-
-  if (user.role === "admin") {
-    return res.json({ lecture });
+  if (!id) {
+    return res.status(400).json({ message: "Lecture ID is required" });
   }
 
-  if (!user.subscription.includes(lecture.course))
-    return res.status(400).json({
-      message: "You have not subscribed to this course",
-    });
+  const lecture = await Lecture.findById(id);
 
-  res.json({ lecture });
+  if (!lecture) {
+    return res.status(404).json({ message: "Lecture not found" });
+  }
+
+  res.status(200).json({
+    success: true,
+    lecture,
+  });
 });
-

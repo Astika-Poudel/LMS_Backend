@@ -216,3 +216,66 @@ export const deleteCourse = TryCatch(async (req, res) => {
     message: "Course Deleted",
   });
 });
+
+// Edit Lecture
+export const editLecture = TryCatch(async (req, res) => {
+  const { id } = req.params;
+  console.log("Editing lecture with ID:", id);
+  console.log("Request body:", req.body);
+  console.log("File:", req.file);
+
+  if (!id) {
+    return res.status(400).json({ message: "Lecture ID is required" });
+  }
+
+  const { title, description } = req.body;
+
+  // Ensure the lecture exists
+  const lecture = await Lecture.findById(id);
+  if (!lecture) {
+    return res.status(404).json({ message: "Lecture with the specified ID does not exist" });
+  }
+
+  // Prepare update object
+  const updateData = {
+    title: title || lecture.title,
+    description: description || lecture.description,
+  };
+
+  // Handle video file update if a new file is uploaded
+  if (req.file) {
+    // If there's an existing video, delete it
+    if (lecture.video) {
+      try {
+        await unlinkAsync(lecture.video);
+        console.log("Old video deleted successfully");
+      } catch (error) {
+        console.error("Error deleting old video:", error);
+        // Continue with the update even if old video deletion fails
+      }
+    }
+    // Set the new video path
+    updateData.video = req.file.path.replace(/\\/g, '/');
+  }
+
+  console.log("Update data:", updateData);
+
+  // Update the lecture in the database
+  const updatedLecture = await Lecture.findByIdAndUpdate(
+    id,
+    updateData,
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedLecture) {
+    return res.status(404).json({ message: "Lecture update failed" });
+  }
+
+  console.log("Lecture updated successfully:", updatedLecture);
+
+  res.status(200).json({
+    success: true,
+    message: "Lecture updated successfully",
+    lecture: updatedLecture,
+  });
+});

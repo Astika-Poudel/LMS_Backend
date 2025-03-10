@@ -4,6 +4,7 @@ import { connectDb } from "./database/db.js";
 import userRoutes from "./routes/user.js";
 import courseRoutes from "./routes/course.js";
 import adminRoutes from "./routes/admin.js";
+import paymentRoutes from "./routes/stripe.js";
 import cors from "cors";
 
 dotenv.config();
@@ -26,6 +27,9 @@ app.use("/uploads",express.static("uploads"));
 app.use("/api",userRoutes);
 app.use("/api",courseRoutes);
 app.use("/api",adminRoutes);
+app.use("/api/payment",paymentRoutes);
+
+
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
