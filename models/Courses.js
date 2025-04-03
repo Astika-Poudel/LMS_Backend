@@ -26,9 +26,18 @@ const schema = new mongoose.Schema({
         required: true,
     },
     Tutor: {
-        type: String,
-        required: true,
-    }
-});
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "User"
+       
+    },
+    Lectures: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Lecture",
+    }],
+    enrolledStudents: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    }],
+}, { timestamps: true });
 
 export const Courses = mongoose.model("Courses", schema);

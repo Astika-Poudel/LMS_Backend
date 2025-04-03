@@ -4,17 +4,21 @@ import { Lecture } from "../models/Lecture.js";
 import { User } from "../models/User.js";
 
 
+// Example for /api/course/all
 export const getAllCourses = TryCatch(async (req, res) => {
-  const courses = await Courses.find();
-  res.json({
-    courses,
-  });
+  const courses = await Courses.find().populate("Tutor");
+  res.status(200).json({ success: true, courses });
 });
 
 export const getSingleCourse = TryCatch(async (req, res) => {
-  const course = await Courses.findById(req.params.id);
+  const course = await Courses.findById(req.params.id).populate("Lectures"); // Populate lectures
+
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
 
   res.json({
+    success: true,
     course,
   });
 });
