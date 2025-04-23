@@ -1,4 +1,3 @@
-// controllers/tutor.js
 import TryCatch from "../middlewares/TryCatch.js";
 import { Courses } from "../models/Courses.js";
 import { User } from "../models/User.js";
@@ -26,7 +25,7 @@ export const getTutorCourses = TryCatch(async (req, res) => {
 
 export const assignTutorToCourse = TryCatch(async (req, res) => {
   const { courseId } = req.params;
-  const { tutorId } = req.body; // Change to expect tutorId instead of tutorName
+  const { tutorId } = req.body; 
 
   const course = await Courses.findById(courseId);
   if (!course) {

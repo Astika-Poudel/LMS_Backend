@@ -116,7 +116,7 @@ export const myProfile = TryCatch(async (req, res) => {
     res.status(200).json({ user });
 });
 
-// Fetch all users (Admin only)
+
 export const fetchAllUsers = TryCatch(async (req, res) => {
     const users = await User.find({}).select("-password");
     res.status(200).json(users);
@@ -168,4 +168,20 @@ export const deleteUser = TryCatch(async (req, res) => {
     }
 
     res.status(200).json({ message: "User deleted successfully" });
+});
+
+// Fetch user by ID
+export const fetchUserById = TryCatch(async (req, res) => {
+    const { studentId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const user = await User.findById(studentId).select("firstName lastName");
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ success: true, user });
 });

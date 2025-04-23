@@ -56,9 +56,8 @@ export const enrollCourse = TryCatch(async (req, res) => {
   });
 });
 
-// Get user's enrolled courses
+
 export const getEnrolledCourses = TryCatch(async (req, res) => {
-    // Find user and populate enrolled courses
     const user = await User.findById(req.userId).populate("enrolledCourses");
 
     if (!user) {

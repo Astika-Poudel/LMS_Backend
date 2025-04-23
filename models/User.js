@@ -1,53 +1,87 @@
 import mongoose from "mongoose";
 
-const schema = new mongoose.Schema(
-  {
+const schema = new mongoose.Schema({
     firstname: {
-      type: String,
-      required: true,
+        type: String,
+        required: true,
     },
     lastname: {
-      type: String,
-      required: true,
+        type: String,
+        required: true,
     },
     username: {
-      type: String,
-      required: true,
-      unique: true,
+        type: String,
+        required: true,
+        unique: true,
     },
     email: {
-      type: String,
-      required: true,
-      unique: true,
+        type: String,
+        required: true,
+        unique: true,
     },
     password: {
-      type: String,
-      required: true,
+        type: String,
+        required: true,
     },
     role: {
-      type: String,
-      enum: ["Student", "Tutor", "Admin"],
-      default: "Student",
-      required: true,
+        type: String,
+        enum: ["Student", "Tutor", "Admin"],
+        default: "Student",
+        required: true,
     },
-    quizHistory: [
-      {
+    quizHistory: [{
         quiz: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Quiz",
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Quiz",
         },
         score: Number,
         submittedAt: Date,
-      },
-    ],
-    enrolledCourses: [
-      {
+    }],
+    enrolledCourses: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Courses",
-      },
-    ],
-  },
-  { timestamps: true }
-);
+    }],
+    courseProgress: [{
+        course: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Courses",
+            required: true,
+        },
+        watchedBeginnerLectures: [{
+            lecture: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Lecture",
+            },
+            watchedAt: Date,
+        }],
+        completedBeginnerLectures: {
+            type: Boolean,
+            default: false,
+        },
+        beginnerQuizScore: {
+            type: Number,
+            default: null,
+        },
+        watchedAdvancedLectures: [{
+            lecture: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Lecture",
+            },
+            watchedAt: Date,
+        }],
+        completedAdvancedLectures: {
+            type: Boolean,
+            default: false,
+        },
+        advancedQuizScore: {
+            type: Number,
+            default: null,
+        },
+        certificateAwarded: {
+            type: Boolean,
+            default: false,
+        },
+    }],
+}, { timestamps: true });
 
 export const User = mongoose.model("User", schema);
