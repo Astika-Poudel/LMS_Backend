@@ -12,6 +12,7 @@ import { Server } from "socket.io";
 import http from "http";
 import tutorRoutes from "./routes/tutor.js";
 import quizRoutes from "./routes/quiz.js";
+import noteRoutes from "./routes/note.js";
 import path from "path";
 import { isAuth } from "./middlewares/isAuth.js";
 import tutorratingRoutes from "./routes/tutorrating.js";
@@ -49,6 +50,7 @@ app.use("/api", notificationRoutes);
 app.use("/api", tutorRoutes);
 app.use("/api", quizRoutes);
 app.use("/api/tutor-ratings",tutorratingRoutes);
+app.use("/api", noteRoutes);
 
 app.get("/api/test", (req, res) => {
     res.json({ message: "API is working" });
