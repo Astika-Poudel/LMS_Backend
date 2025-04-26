@@ -19,20 +19,19 @@ const validatePaymentInput = (amount) => {
   }
 
   const amountInCents = Math.round(amount * 100);
-  if (amountInCents < 50) { 
+  if (amountInCents < 50) {
     throw new Error("Amount too small. Minimum amount is 0.50 USD.");
   }
 
   return amountInCents;
 };
 
-
+// Stripe Payment Intent
 export const createPaymentIntent = async (req, res) => {
   try {
     const { amount } = req.body;
     const userId = req.userId;
 
-    
     const amountInCents = validatePaymentInput(amount);
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -46,16 +45,15 @@ export const createPaymentIntent = async (req, res) => {
       clientSecret: paymentIntent.client_secret,
     });
   } catch (error) {
-    console.error("Error in createPaymentIntent:", error.message);
-    res.status(error.message.includes("Invalid amount") || error.message.includes("Amount too small") ? 400 : 500).json({
+    console.error("Error in createPaymentIntent:", error.message, error.stack);
+    res.status(
+      error.message.includes("Invalid amount") || error.message.includes("Amount too small") ? 400 : 500
+    ).json({
       success: false,
       error: error.message,
     });
   }
 };
-
-import crypto from "crypto";
-import axios from "axios";
 
 // Utility function to generate HMAC SHA256 signature
 const generateHmacSha256Hash = (data, secret) => {
@@ -84,14 +82,17 @@ export const initiateEsewaPayment = async (req, res) => {
       });
     }
 
+    // Format amount to ensure consistency (e.g., "10.00")
+    const formattedAmount = parseFloat(amount).toFixed(2);
+
     // Generate unique transaction UUID
     const transactionUuid = `${courseId}-${Date.now()}`;
 
     // Prepare payment data
     const paymentData = {
-      amount: amount.toString(),
+      amount: formattedAmount,
       tax_amount: "0",
-      total_amount: amount.toString(),
+      total_amount: formattedAmount,
       transaction_uuid: transactionUuid,
       product_code: process.env.ESEWA_MERCHANT_ID,
       product_service_charge: "0",
@@ -108,6 +109,13 @@ export const initiateEsewaPayment = async (req, res) => {
     // Add signature to payment data
     paymentData.signature = signature;
 
+    // Log payment data for debugging
+    console.log("Initiating eSewa Payment:");
+    console.log("Payment Data:", paymentData);
+    console.log("Data to Sign:", dataToSign);
+    console.log("Generated Signature:", signature);
+    console.log("Success URL:", process.env.ESEWA_SUCCESS_URL);
+
     // Respond with payment data to be used in the frontend form
     res.status(200).json({
       success: true,
@@ -115,18 +123,22 @@ export const initiateEsewaPayment = async (req, res) => {
       paymentUrl: process.env.ESEWA_PAYMENT_URL,
     });
   } catch (error) {
-    console.error("Error in initiateEsewaPayment:", error.message);
+    console.error("Error in initiateEsewaPayment:", error.message, error.stack);
     res.status(500).json({
       success: false,
-      error: "Failed to initiate eSewa payment.",
+      error: error.message || "Failed to initiate eSewa payment.",
     });
   }
 };
 
-// eSewa Payment Verification (Optional, for added security)
+// eSewa Payment Verification
 export const verifyEsewaPayment = async (req, res) => {
   try {
     const { transaction_uuid, amount, refId } = req.query;
+
+    // Log incoming query parameters
+    console.log("Verifying eSewa Payment:");
+    console.log("Query Params:", { transaction_uuid, amount, refId });
 
     // Validate inputs
     if (!transaction_uuid || !amount || !refId) {
@@ -136,24 +148,38 @@ export const verifyEsewaPayment = async (req, res) => {
       });
     }
 
+    // Format amount to match the initiation format
+    const formattedAmount = parseFloat(amount).toFixed(2);
+
+    // Extract courseId from transaction_uuid (format: courseId-timestamp)
+    const courseId = transaction_uuid.split("-")[0];
+
     // Prepare verification data
+    // Adjust these keys based on eSewa's API requirements
     const verificationData = {
-      amt: amount,
+      amt: formattedAmount,
       scd: process.env.ESEWA_MERCHANT_ID,
-      pid: transaction_uuid,
+      pid: transaction_uuid, // This might need to be transaction_code or similar
       rid: refId,
     };
+
+    console.log("Verification Data:", verificationData);
 
     // Make verification request to eSewa
     const response = await axios.get("https://rc-epay.esewa.com.np/api/epay/transaction", {
       params: verificationData,
+    }).catch(error => {
+      console.error("eSewa Verification Error Response:", error.response?.data);
+      throw error;
     });
 
+    console.log("eSewa Verification Response:", response.data);
+
     if (response.data.status === "SUCCESS") {
-      // Optionally, save transaction details to your database
       res.status(200).json({
         success: true,
         message: "Payment verified successfully.",
+        courseId, // Return courseId for enrollment
         transactionDetails: response.data,
       });
     } else {
@@ -163,10 +189,10 @@ export const verifyEsewaPayment = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error in verifyEsewaPayment:", error.message);
+    console.error("Error in verifyEsewaPayment:", error.message, error.stack);
     res.status(500).json({
       success: false,
-      error: "Failed to verify payment.",
+      error: error.message || "Failed to verify payment.",
     });
   }
 };
