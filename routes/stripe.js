@@ -11,6 +11,6 @@ router.post("/create-payment-intent", isAuth, createPaymentIntent);
 router.post("/initiate-esewa", isAuth, initiateEsewaPayment);
 
 // eSewa Payment Verification
-router.get("/verify-esewa", isAuth, verifyEsewaPayment);
+router.get("/verify-esewa", verifyEsewaPayment);
 
 export default router;
