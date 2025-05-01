@@ -1,6 +1,6 @@
 import TryCatch from "../middlewares/TryCatch.js";
-import { User } from "../models/User.js";
 import { Courses } from "../models/Courses.js";
+import { User } from "../models/User.js";
 
 export const enrollCourse = TryCatch(async (req, res) => {
   const { courseId } = req.params;
@@ -37,17 +37,26 @@ export const enrollCourse = TryCatch(async (req, res) => {
     });
   }
 
-  await User.findByIdAndUpdate(
-    req.userId,
-    { $push: { enrolledCourses: courseId } },
-    { new: true }
-  );
-
-  await Courses.findByIdAndUpdate(
-    courseId,
-    { $push: { enrolledStudents: req.userId } },
-    { new: true }
-  );
+  try {
+    await Promise.all([
+      User.findByIdAndUpdate(
+        req.userId,
+        { $addToSet: { enrolledCourses: courseId } },
+        { new: true }
+      ),
+      Courses.findByIdAndUpdate(
+        courseId,
+        { $addToSet: { enrolledStudents: req.userId } },
+        { new: true }
+      ),
+    ]);
+  } catch (error) {
+    console.error("Enrollment sync error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to enroll: Data sync error",
+    });
+  }
 
   res.status(200).json({
     success: true,
@@ -56,19 +65,18 @@ export const enrollCourse = TryCatch(async (req, res) => {
   });
 });
 
-
 export const getEnrolledCourses = TryCatch(async (req, res) => {
-    const user = await User.findById(req.userId).populate("enrolledCourses");
+  const user = await User.findById(req.userId).populate("enrolledCourses");
 
-    if (!user) {
-        return res.status(404).json({
-            success: false,
-            message: "User not found",
-        });
-    }
-
-    res.status(200).json({
-        success: true,
-        courses: user.enrolledCourses,
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
     });
+  }
+
+  res.status(200).json({
+    success: true,
+    courses: user.enrolledCourses,
+  });
 });
