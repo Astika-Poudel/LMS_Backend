@@ -8,7 +8,7 @@ import sanitizeHtml from "sanitize-html";
 // Middleware to check if user is enrolled or tutor
 const checkForumAccess = TryCatch(async (req, res, next) => {
   const { courseId } = req.params;
-  const userId = req.userId.toString(); // Ensure userId is a string
+  const userId = req.userId.toString();
 
   const course = await Courses.findById(courseId).populate("enrolledStudents Tutor");
   if (!course) {
@@ -20,13 +20,11 @@ const checkForumAccess = TryCatch(async (req, res, next) => {
     return res.status(404).json({ message: "User not found" });
   }
 
-  // Check enrollment using both course.enrolledStudents and user.enrolledCourses for consistency
   const isEnrolled =
     course.enrolledStudents.some((studentId) => studentId.toString() === userId) ||
     user.enrolledCourses.some((enrolledCourseId) => enrolledCourseId.toString() === courseId);
   const isTutor = course.Tutor && course.Tutor.toString() === userId;
 
-  // Debug logging
   console.log(`Checking access for user ${userId} in course ${courseId}:`);
   console.log(`User enrolledCourses:`, user.enrolledCourses);
   console.log(`Course enrolledStudents:`, course.enrolledStudents);
@@ -75,6 +73,7 @@ export const getForumPosts = [
 
     const posts = await ForumPost.find(query)
       .populate("user", "firstname lastname username role")
+      .populate("taggedUsers", "firstname lastname username")
       .populate({
         path: "comments",
         populate: [
@@ -135,6 +134,7 @@ export const createForumPost = [
 
     const populatedPost = await ForumPost.findById(post._id)
       .populate("user", "firstname lastname username role")
+      .populate("taggedUsers", "firstname lastname username")
       .populate({
         path: "comments",
         populate: [
@@ -176,6 +176,113 @@ export const createForumPost = [
       success: true,
       post: populatedPost,
       message: "Post created successfully",
+    });
+  }),
+];
+
+// Update a forum post
+export const updateForumPost = [
+  checkForumAccess,
+  TryCatch(async (req, res) => {
+    const { courseId, postId } = req.params;
+    const { title, content, taggedUsernames } = req.body;
+    const userId = req.userId;
+
+    const post = await ForumPost.findOne({ _id: postId, course: courseId });
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    console.log(`Updating post ${postId} by user ${userId}`);
+    console.log(`Post user ID: ${post.user.toString()}`);
+    console.log(`Request user ID: ${userId}`);
+    console.log(`Do they match? ${post.user.toString() === userId}`);
+
+    if (post.user.toString() !== userId) {
+      return res.status(403).json({ message: "You can only edit your own posts" });
+    }
+
+    if (!title || !content) {
+      return res.status(400).json({ message: "Title and content are required" });
+    }
+
+    const sanitizedContent = sanitizeHtml(content, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(["h1", "h2", "code"]),
+      allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, a: ["href"] },
+    });
+
+    let taggedUsers = [];
+    if (taggedUsernames && Array.isArray(taggedUsernames)) {
+      taggedUsers = await User.find({
+        username: { $in: taggedUsernames },
+        $or: [
+          { _id: req.course.Tutor },
+          { _id: { $in: req.course.enrolledStudents } },
+        ],
+      }).select("_id");
+    }
+
+    post.title = title;
+    post.content = sanitizedContent;
+    post.taggedUsers = taggedUsers.map((u) => u._id);
+    post.updatedAt = new Date();
+    await post.save();
+
+    const populatedPost = await ForumPost.findById(post._id)
+      .populate("user", "firstname lastname username role")
+      .populate("taggedUsers", "firstname lastname username")
+      .populate({
+        path: "comments",
+        populate: [
+          { path: "user", select: "firstname lastname username role" },
+          { path: "taggedUsers", select: "firstname lastname username" },
+          { path: "reactions.user", select: "firstname lastname username" },
+          {
+            path: "replies",
+            populate: [
+              { path: "user", select: "firstname lastname username role" },
+              { path: "taggedUsers", select: "firstname lastname username" },
+              { path: "reactions.user", select: "firstname lastname username" },
+            ],
+          },
+        ],
+      });
+
+    res.status(200).json({
+      success: true,
+      post: populatedPost,
+      message: "Post updated successfully",
+    });
+  }),
+];
+
+// Delete a forum post
+export const deleteForumPost = [
+  checkForumAccess,
+  TryCatch(async (req, res) => {
+    const { courseId, postId } = req.params;
+    const userId = req.userId;
+
+    const post = await ForumPost.findOne({ _id: postId, course: courseId });
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    console.log(`Deleting post ${postId} by user ${userId}`);
+    console.log(`Post user ID: ${post.user.toString()}`);
+    console.log(`Request user ID: ${userId}`);
+    console.log(`Do they match? ${post.user.toString() === userId}`);
+
+    if (post.user.toString() !== userId) {
+      return res.status(403).json({ message: "You can only delete your own posts" });
+    }
+
+    await Comment.deleteMany({ _id: { $in: post.comments } });
+    await post.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Post deleted successfully",
     });
   }),
 ];
@@ -243,6 +350,7 @@ export const addComment = [
 
     const populatedPost = await ForumPost.findById(postId)
       .populate("user", "firstname lastname username role")
+      .populate("taggedUsers", "firstname lastname username")
       .populate({
         path: "comments",
         populate: [
@@ -344,6 +452,7 @@ export const addReaction = [
           .populate("reactions.user", "firstname lastname username")
       : await ForumPost.findById(postId)
           .populate("user", "firstname lastname username role")
+          .populate("taggedUsers", "firstname lastname username")
           .populate({
             path: "comments",
             populate: [
@@ -374,15 +483,30 @@ export const getTaggableUsers = [
   checkForumAccess,
   TryCatch(async (req, res) => {
     const { courseId } = req.params;
-    const course = await Courses.findById(courseId).populate(
-      "enrolledStudents Tutor",
-      "firstname lastname username"
-    );
+    const course = await Courses.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Fetch raw user documents to inspect the data
+    const enrolledStudents = await User.find({ _id: { $in: course.enrolledStudents } }).select("firstname lastname username email");
+    const tutor = course.Tutor ? await User.findById(course.Tutor).select("firstname lastname username email") : null;
+
+    console.log(`Raw enrolled students for course ${courseId}:`, enrolledStudents);
+    console.log(`Raw tutor for course ${courseId}:`, tutor);
 
     const users = [
-      ...(course.enrolledStudents || []),
-      course.Tutor,
-    ].filter((user) => user);
+      ...enrolledStudents,
+      tutor,
+    ].filter(user => user).map(user => ({
+      _id: user._id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      username: user.username || user.email.split('@')[0] || `${user.firstname.toLowerCase()}${user.lastname.toLowerCase()}`,
+    }));
+
+    console.log(`Processed taggable users for course ${courseId}:`, users);
 
     res.status(200).json({ success: true, users });
   }),
