@@ -29,6 +29,10 @@ const schema = new mongoose.Schema({
         default: "Student",
         required: true,
     },
+    image: {
+        type: String,
+        default: "default-profile.png", // Default profile picture
+    },
     quizHistory: [{
         quiz: {
             type: mongoose.Schema.Types.ObjectId,
@@ -82,6 +86,62 @@ const schema = new mongoose.Schema({
             default: false,
         },
     }],
+    tutorRatings: [
+    {
+      courseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Courses",
+      },
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      feedback: {
+        type: String,
+        trim: true,
+      },
+      studentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+  studentRatings: [
+    {
+      courseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Courses",
+      },
+      rating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      feedback: {
+        type: String,
+        trim: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+  averageTutorRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5,
+  },
+  tutorRatingCount: {
+    type: Number,
+    default: 0,
+  },
 }, { timestamps: true });
 
 export const User = mongoose.model("User", schema);

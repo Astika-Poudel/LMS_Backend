@@ -5,7 +5,7 @@ import { User } from "../models/User.js";
 import { Notification } from "../models/Notification.js";
 
 export const createQuiz = TryCatch(async (req, res) => {
-    const { title, description, courseId, questionsPool, questionCount, type } = req.body;
+    const { title, description, courseId, questions, type } = req.body;
     const tutorId = req.user._id;
 
     if (!type || !["beginner", "advanced"].includes(type)) {
@@ -22,8 +22,7 @@ export const createQuiz = TryCatch(async (req, res) => {
         description,
         course: courseId,
         createdBy: tutorId,
-        questionsPool,
-        questionCount,
+        questions,
     });
 
     const updateField = type === "advanced" ? "advancedQuiz" : "beginnerQuiz";
@@ -41,21 +40,19 @@ export const submitQuiz = TryCatch(async (req, res) => {
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
     const existingSubmission = quiz.submissions.find(sub => sub.student.toString() === studentId.toString());
+    
+    // Allow retake if the user has failed (score < passingScore)
     if (existingSubmission && existingSubmission.score >= quiz.course.passingScore) {
         return res.status(400).json({ message: "You have already passed this quiz" });
     }
 
-    const selectedQuestions = quiz.questionsPool
-        .sort(() => 0.5 - Math.random())
-        .slice(0, quiz.questionCount);
-
     let correctAnswers = 0;
     answers.forEach((answer, idx) => {
-        const question = selectedQuestions[answer.questionIndex];
+        const question = quiz.questions[answer.questionIndex];
         const correctOption = question.options.findIndex(opt => opt.isCorrect);
         if (correctOption === answer.selectedOption) correctAnswers++;
     });
-    const score = (correctAnswers / selectedQuestions.length) * 100;
+    const score = (correctAnswers / quiz.questions.length) * 100;
 
     if (existingSubmission) {
         existingSubmission.answers = answers;
@@ -106,7 +103,7 @@ export const submitQuiz = TryCatch(async (req, res) => {
         });
     }
 
-    res.json({ success: true, score, questions: selectedQuestions });
+    res.json({ success: true, score, questions: quiz.questions });
 });
 
 export const getQuiz = TryCatch(async (req, res) => {
@@ -114,11 +111,7 @@ export const getQuiz = TryCatch(async (req, res) => {
     const quiz = await Quiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    const selectedQuestions = quiz.questionsPool
-        .sort(() => 0.5 - Math.random())
-        .slice(0, quiz.questionCount);
-
-    res.json({ success: true, quiz: { ...quiz.toJSON(), questions: selectedQuestions } });
+    res.json({ success: true, quiz: { ...quiz.toJSON(), questions: quiz.questions } });
 });
 
 export const getAllQuizzes = TryCatch(async (req, res) => {

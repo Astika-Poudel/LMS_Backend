@@ -25,6 +25,7 @@ export const isAuth = async (req, res, next) => {
 
         req.user = user;
         req.userId = user._id;
+        console.log("isAuth: req.userId set to", req.userId); // Added for debugging
         next();
     } catch (error) {
         console.error("isAuth Error:", error.message);

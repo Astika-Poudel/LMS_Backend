@@ -143,7 +143,7 @@ export const markLectureWatched = TryCatch(async (req, res) => {
             progress[completedField] = true;
             await Notification.create({
                 recipient: user._id,
-                message: `You've completed all ${isBeginner ? "beginner" : "advanced"} lectures for ${course.title}!`, // Fixed: Added backticks
+                message: `You've completed all ${isBeginner ? "beginner" : "advanced"} lectures for ${course.title}!`,
                 courseId: course._id,
             });
         }
@@ -174,4 +174,81 @@ export const getCourseQuizzes = TryCatch(async (req, res) => {
     if (course.advancedQuiz) quizzes.push(course.advancedQuiz);
 
     res.status(200).json({ success: true, quizzes });
+});
+
+// Updated: Fetch progress of all students enrolled in a course (for tutors)
+export const getAllStudentsProgress = TryCatch(async (req, res) => {
+    const { id } = req.params; // Course ID
+    const tutorId = req.userId; // From auth middleware (req.userId is set by isAuth)
+
+    if (!tutorId) {
+        return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    // Fetch the course and populate enrolled students
+    const course = await Courses.findById(id)
+        .populate("enrolledStudents")
+        .populate("beginnerLectures")
+        .populate("advancedLectures")
+        .populate("beginnerQuiz")
+        .populate("advancedQuiz");
+
+    if (!course) {
+        return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    // Log tutor and course details for debugging
+    console.log("Authenticated Tutor ID:", tutorId);
+    console.log("Raw Course Tutor:", course.Tutor); // Added for debugging
+    console.log("Course Tutor ID:", course.Tutor?.toString()); // Added for debugging
+    console.log("Course ID:", id);
+
+    // Check if the authenticated user is the tutor of this course
+    if (!course.Tutor || course.Tutor.toString() !== tutorId.toString()) {
+        return res.status(403).json({ success: false, message: "Unauthorized: You are not the tutor of this course" });
+    }
+
+    // Fetch progress for all enrolled students
+    const students = await User.find({ _id: { $in: course.enrolledStudents } })
+        .select("firstname lastname email courseProgress")
+        .populate({
+            path: "courseProgress.course",
+            match: { _id: id },
+            populate: [
+                { path: "beginnerLectures" },
+                { path: "advancedLectures" },
+                { path: "beginnerQuiz" },
+                { path: "advancedQuiz" },
+            ],
+        });
+
+    // Calculate progress for each student
+    const studentsWithProgress = students.map((student) => {
+        const progress = student.courseProgress.find((p) => p.course?._id.toString() === id) || {
+            watchedBeginnerLectures: [],
+            watchedAdvancedLectures: [],
+            beginnerQuizScore: null,
+            advancedQuizScore: null,
+        };
+
+        // Calculate progress percentage
+        const totalLectures = (course.beginnerLectures?.length || 0) + (course.advancedLectures?.length || 0);
+        const watchedLectures = progress.watchedBeginnerLectures.length + progress.watchedAdvancedLectures.length;
+        const progressPercentage = totalLectures ? Math.round((watchedLectures / totalLectures) * 100) : 0;
+
+        // Calculate quizzes completed
+        const totalQuizzes = (course.beginnerQuiz ? 1 : 0) + (course.advancedQuiz ? 1 : 0);
+        const quizzesCompleted = (progress.beginnerQuizScore !== null ? 1 : 0) + (progress.advancedQuizScore !== null ? 1 : 0);
+
+        return {
+            _id: student._id,
+            name: `${student.firstname} ${student.lastname}`,
+            email: student.email,
+            progress: progressPercentage,
+            quizzesCompleted: quizzesCompleted,
+            totalQuizzes: totalQuizzes,
+        };
+    });
+
+    res.status(200).json({ success: true, students: studentsWithProgress });
 });

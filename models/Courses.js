@@ -61,6 +61,16 @@ const schema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5,
+  },
+  ratingCount: {
+    type: Number,
+    default: 0,
+  },
 }, { timestamps: true });
 
 export const Courses = mongoose.model("Courses", schema);

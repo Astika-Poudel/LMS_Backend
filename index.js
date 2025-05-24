@@ -15,7 +15,6 @@ import quizRoutes from "./routes/quiz.js";
 import noteRoutes from "./routes/note.js";
 import path from "path";
 import { isAuth } from "./middlewares/isAuth.js";
-import tutorratingRoutes from "./routes/tutorrating.js";
 import forumRoutes from "./routes/forum.js";
 
 dotenv.config();
@@ -50,7 +49,6 @@ app.use("/api", enrollRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api", tutorRoutes);
 app.use("/api", quizRoutes);
-app.use("/api/tutor-ratings",tutorratingRoutes);
 app.use("/api", noteRoutes);
 app.use("/api", forumRoutes);
 

@@ -18,7 +18,7 @@ const quizSchema = new mongoose.Schema({
         ref: "User",
         required: true,
     },
-    questionsPool: [{
+    questions: [{
         type: {
             type: String,
             enum: ["multiple-choice", "true-false"],
@@ -33,10 +33,6 @@ const quizSchema = new mongoose.Schema({
             isCorrect: Boolean,
         }],
     }],
-    questionCount: {
-        type: Number,
-        default: 12,
-    },
     submissions: [{
         student: {
             type: mongoose.Schema.Types.ObjectId,
